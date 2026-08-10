@@ -1,0 +1,23 @@
+# Build results
+bin/
+obj/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# appsettings with real secrets (see appsettings.json for placeholders)
+appsettings.Development.json
+appsettings.*.local.json
+
+# Rider/VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
