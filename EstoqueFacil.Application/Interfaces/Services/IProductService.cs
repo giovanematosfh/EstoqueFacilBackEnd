@@ -6,8 +6,6 @@ namespace EstoqueFacil.Application.Interfaces.Services
     {
         Task<PagedResultDto<ProductDto>> GetAllAsync(string? search, int page, int pageSize);
         Task<ProductDto> GetByIdAsync(int id);
-        Task<IEnumerable<ProductDto>> GetLowStockAsync();
-        Task<IEnumerable<ProductDto>> GetAllForReportAsync();
         Task<ProductDto> CreateAsync(CreateProductDto dto);
         Task<ProductDto> UpdateAsync(int id, UpdateProductDto dto);
         Task RemoveAsync(int id);

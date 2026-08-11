@@ -26,13 +26,6 @@ namespace EstoqueFacil.Infrastructure.Repositories
             return await DbSet.AnyAsync(p => p.Sku == sku && (!ignoreId.HasValue || p.Id != ignoreId.Value));
         }
 
-        public async Task<IEnumerable<Product>> GetLowStockAsync()
-        {
-            return await DbSet.Include(p => p.Category)
-                .Where(p => p.StockQuantity <= p.MinimumStockQuantity)
-                .ToListAsync();
-        }
-
         public async Task<(IEnumerable<Product> Items, int TotalCount)> GetPagedAsync(string? search, int page, int pageSize)
         {
             var query = DbSet.Include(p => p.Category).AsQueryable();

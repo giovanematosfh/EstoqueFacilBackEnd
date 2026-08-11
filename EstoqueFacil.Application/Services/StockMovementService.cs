@@ -15,16 +15,16 @@ namespace EstoqueFacil.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<PagedResultDto<StockMovementDto>> GetAllAsync(string? search, int page, int pageSize)
+        public async Task<PagedResultDto<StockMovementDto>> GetAllAsync(string? search, int? branchId, int page, int pageSize)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var (movements, totalCount) = await _unitOfWork.StockMovements.GetPagedAsync(search, page, pageSize);
+            var (movements, totalCount) = await _unitOfWork.StockMovements.GetPagedAsync(search, branchId, page, pageSize);
 
             return new PagedResultDto<StockMovementDto>
             {
-                Items = movements.Select(m => MapToDto(m, m.Product.StockQuantity)),
+                Items = movements.Select(m => MapToDto(m, ResolveBalance(m))),
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -40,13 +40,13 @@ namespace EstoqueFacil.Application.Services
             }
 
             var movements = await _unitOfWork.StockMovements.GetByProductIdAsync(productId);
-            return movements.Select(m => MapToDto(m, product.StockQuantity));
+            return movements.Select(m => MapToDto(m, ResolveBalance(m)));
         }
 
-        public async Task<IEnumerable<StockMovementDto>> GetByDateRangeAsync(DateTime from, DateTime to)
+        public async Task<IEnumerable<StockMovementDto>> GetByDateRangeAsync(DateTime from, DateTime to, int? branchId)
         {
-            var movements = await _unitOfWork.StockMovements.GetByDateRangeAsync(from, to);
-            return movements.Select(m => MapToDto(m, m.Product.StockQuantity));
+            var movements = await _unitOfWork.StockMovements.GetByDateRangeAsync(from, to, branchId);
+            return movements.Select(m => MapToDto(m, ResolveBalance(m)));
         }
 
         public async Task<StockMovementDto> RegisterAsync(CreateStockMovementDto dto)
@@ -57,18 +57,26 @@ namespace EstoqueFacil.Application.Services
                 throw new NotFoundException($"Produto com id {dto.ProductId} não foi encontrado.");
             }
 
-            if (dto.Type == MovementType.Outbound && product.StockQuantity < dto.Quantity)
+            var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId);
+            if (branch == null)
             {
-                throw new BusinessException(
-                    $"Estoque insuficiente para '{product.Name}'. Disponível: {product.StockQuantity}, solicitado: {dto.Quantity}.");
+                throw new NotFoundException($"Filial com id {dto.BranchId} não foi encontrada.");
             }
 
-            product.StockQuantity += dto.Type == MovementType.Inbound ? dto.Quantity : -dto.Quantity;
-            product.UpdatedAt = DateTime.UtcNow;
+            var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(dto.ProductId, dto.BranchId);
+
+            if (dto.Type == MovementType.Outbound && productStock.Quantity < dto.Quantity)
+            {
+                throw new BusinessException(
+                    $"Estoque insuficiente para '{product.Name}' na filial '{branch.Name}'. Disponível: {productStock.Quantity}, solicitado: {dto.Quantity}.");
+            }
+
+            productStock.Quantity += dto.Type == MovementType.Inbound ? dto.Quantity : -dto.Quantity;
 
             var movement = new StockMovement
             {
                 ProductId = dto.ProductId,
+                BranchId = dto.BranchId,
                 Type = dto.Type,
                 Quantity = dto.Quantity,
                 Reason = dto.Reason,
@@ -79,7 +87,13 @@ namespace EstoqueFacil.Application.Services
             await _unitOfWork.CommitAsync();
 
             movement.Product = product;
-            return MapToDto(movement, product.StockQuantity);
+            movement.Branch = branch;
+            return MapToDto(movement, productStock.Quantity);
+        }
+
+        private static int ResolveBalance(StockMovement movement)
+        {
+            return movement.Product?.ProductStocks?.FirstOrDefault(ps => ps.BranchId == movement.BranchId)?.Quantity ?? 0;
         }
 
         private static StockMovementDto MapToDto(StockMovement movement, int currentBalance)
@@ -89,6 +103,8 @@ namespace EstoqueFacil.Application.Services
                 Id = movement.Id,
                 ProductId = movement.ProductId,
                 ProductName = movement.Product?.Name,
+                BranchId = movement.BranchId,
+                BranchName = movement.Branch?.Name ?? string.Empty,
                 Type = movement.Type.ToString(),
                 Quantity = movement.Quantity,
                 Reason = movement.Reason,

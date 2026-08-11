@@ -10,6 +10,9 @@ namespace EstoqueFacil.Application.Validators
             RuleFor(m => m.ProductId)
                 .GreaterThan(0).WithMessage("Informe um produto válido.");
 
+            RuleFor(m => m.BranchId)
+                .GreaterThan(0).WithMessage("Informe uma filial válida.");
+
             RuleFor(m => m.Type)
                 .IsInEnum().WithMessage("Tipo de movimentação inválido.");
 

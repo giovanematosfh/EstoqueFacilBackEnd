@@ -21,12 +21,6 @@ namespace EstoqueFacil.Application.Validators
             RuleFor(p => p.Price)
                 .GreaterThan(0).WithMessage("O preço deve ser maior que zero.");
 
-            RuleFor(p => p.StockQuantity)
-                .GreaterThanOrEqualTo(0).WithMessage("A quantidade em estoque não pode ser negativa.");
-
-            RuleFor(p => p.MinimumStockQuantity)
-                .GreaterThanOrEqualTo(0).WithMessage("A quantidade mínima não pode ser negativa.");
-
             RuleFor(p => p.CategoryId)
                 .GreaterThan(0).WithMessage("Informe uma categoria válida.");
         }

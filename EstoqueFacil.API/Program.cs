@@ -1,6 +1,7 @@
 using System.Text;
 using EstoqueFacil.API.Filters;
 using EstoqueFacil.API.Middlewares;
+using EstoqueFacil.Application.Constants;
 using EstoqueFacil.Application.Interfaces.Repositories;
 using EstoqueFacil.Application.Interfaces.Services;
 using EstoqueFacil.Application.Services;
@@ -78,6 +79,8 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IStockMovementService, StockMovementService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IBranchService, BranchService>();
+builder.Services.AddScoped<IProductStockService, ProductStockService>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CategoryService>();
 
@@ -112,6 +115,36 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI(); // disponível em /swagger
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+    foreach (var roleName in new[] { Roles.Admin, Roles.User })
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new IdentityRole<int>(roleName));
+        }
+    }
+
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (!await dbContext.Branches.AnyAsync())
+    {
+        var matriz = new EstoqueFacil.Domain.Model.Branch
+        {
+            Name = "Matriz",
+            Active = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        dbContext.Branches.Add(matriz);
+        await dbContext.SaveChangesAsync();
+
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        await unitOfWork.ProductStocks.CreateForAllProductsAsync(matriz.Id);
+        await unitOfWork.CommitAsync();
+    }
 }
 
 app.UseMiddleware<ErrorHandlingMiddleware>();

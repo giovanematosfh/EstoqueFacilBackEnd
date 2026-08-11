@@ -7,10 +7,7 @@ namespace EstoqueFacil.Application.Dtos
         public string? Description { get; set; }
         public string Sku { get; set; } = string.Empty;
         public decimal Price { get; set; }
-        public int StockQuantity { get; set; }
-        public int MinimumStockQuantity { get; set; }
         public bool Active { get; set; }
-        public bool LowStock { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public int CategoryId { get; set; }

@@ -18,19 +18,19 @@ namespace EstoqueFacil.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] int? branchId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var movements = await _stockMovementService.GetAllAsync(search, page, pageSize);
+            var movements = await _stockMovementService.GetAllAsync(search, branchId, page, pageSize);
             return Ok(movements);
         }
 
         [HttpGet("report")]
-        public async Task<IActionResult> GetReport([FromQuery] DateTime from, [FromQuery] DateTime to)
+        public async Task<IActionResult> GetReport([FromQuery] DateTime from, [FromQuery] DateTime to, [FromQuery] int? branchId)
         {
             var fromUtc = DateTime.SpecifyKind(from, DateTimeKind.Utc);
             var toUtc = DateTime.SpecifyKind(to, DateTimeKind.Utc);
 
-            var movements = await _stockMovementService.GetByDateRangeAsync(fromUtc, toUtc);
+            var movements = await _stockMovementService.GetByDateRangeAsync(fromUtc, toUtc, branchId);
             return Ok(movements);
         }
 

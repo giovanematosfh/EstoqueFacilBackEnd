@@ -1,4 +1,5 @@
 using System.Net;
+using EstoqueFacil.Application.Constants;
 using EstoqueFacil.Application.Dtos.Auth;
 using EstoqueFacil.Application.Exceptions;
 using EstoqueFacil.Application.Interfaces.Services;
@@ -66,6 +67,7 @@ namespace EstoqueFacil.API.Controllers
             // });
 
             await _userManager.ConfirmEmailAsync(user, await _userManager.GenerateEmailConfirmationTokenAsync(user));
+            await _userManager.AddToRoleAsync(user, Roles.User);
 
             return Ok(await BuildAuthResponseAsync(user));
         }
@@ -84,6 +86,11 @@ namespace EstoqueFacil.API.Controllers
             // {
             //     throw new BusinessException("Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.");
             // }
+
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                throw new BusinessException("Sua conta foi desativada. Entre em contato com um administrador.");
+            }
 
             return Ok(await BuildAuthResponseAsync(user));
         }
@@ -141,7 +148,8 @@ namespace EstoqueFacil.API.Controllers
                 {
                     Id = user.Id,
                     Name = user.FullName,
-                    Email = user.Email!
+                    Email = user.Email!,
+                    Role = roles.FirstOrDefault() ?? Roles.User
                 }
             };
         }

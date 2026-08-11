@@ -42,18 +42,6 @@ namespace EstoqueFacil.Application.Services
             return MapToDto(product);
         }
 
-        public async Task<IEnumerable<ProductDto>> GetLowStockAsync()
-        {
-            var products = await _unitOfWork.Products.GetLowStockAsync();
-            return products.Select(MapToDto);
-        }
-
-        public async Task<IEnumerable<ProductDto>> GetAllForReportAsync()
-        {
-            var products = await _unitOfWork.Products.GetAllWithCategoryAsync();
-            return products.Select(MapToDto).OrderBy(p => p.Name);
-        }
-
         public async Task<ProductDto> CreateAsync(CreateProductDto dto)
         {
             var category = await _unitOfWork.Categories.GetByIdAsync(dto.CategoryId);
@@ -73,14 +61,15 @@ namespace EstoqueFacil.Application.Services
                 Description = dto.Description,
                 Sku = dto.Sku,
                 Price = dto.Price,
-                StockQuantity = dto.StockQuantity,
-                MinimumStockQuantity = dto.MinimumStockQuantity,
                 CategoryId = dto.CategoryId,
                 Active = true,
                 CreatedAt = DateTime.UtcNow
             };
 
             _unitOfWork.Products.Add(product);
+            await _unitOfWork.CommitAsync();
+
+            await _unitOfWork.ProductStocks.CreateForAllBranchesAsync(product.Id);
             await _unitOfWork.CommitAsync();
 
             product = await _unitOfWork.Products.GetByIdWithCategoryAsync(product.Id);
@@ -104,7 +93,6 @@ namespace EstoqueFacil.Application.Services
             product.Name = dto.Name;
             product.Description = dto.Description;
             product.Price = dto.Price;
-            product.MinimumStockQuantity = dto.MinimumStockQuantity;
             product.Active = dto.Active;
             product.CategoryId = dto.CategoryId;
             product.UpdatedAt = DateTime.UtcNow;
@@ -136,10 +124,7 @@ namespace EstoqueFacil.Application.Services
                 Description = product.Description,
                 Sku = product.Sku,
                 Price = product.Price,
-                StockQuantity = product.StockQuantity,
-                MinimumStockQuantity = product.MinimumStockQuantity,
                 Active = product.Active,
-                LowStock = product.StockQuantity <= product.MinimumStockQuantity,
                 CreatedAt = product.CreatedAt,
                 UpdatedAt = product.UpdatedAt,
                 CategoryId = product.CategoryId,

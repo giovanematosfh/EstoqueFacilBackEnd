@@ -24,20 +24,6 @@ namespace EstoqueFacil.API.Controllers
             return Ok(products);
         }
 
-        [HttpGet("low-stock")]
-        public async Task<IActionResult> GetLowStock()
-        {
-            var products = await _productService.GetLowStockAsync();
-            return Ok(products);
-        }
-
-        [HttpGet("report")]
-        public async Task<IActionResult> GetReport()
-        {
-            var products = await _productService.GetAllForReportAsync();
-            return Ok(products);
-        }
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {

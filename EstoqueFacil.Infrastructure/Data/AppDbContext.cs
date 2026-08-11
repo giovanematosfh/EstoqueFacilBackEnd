@@ -16,6 +16,8 @@ namespace EstoqueFacil.Infrastructure.Data
         public DbSet<Product> Products => Set<Product>();
         public DbSet<StockMovement> StockMovements => Set<StockMovement>();
         public DbSet<Supplier> Suppliers => Set<Supplier>();
+        public DbSet<Branch> Branches => Set<Branch>();
+        public DbSet<ProductStock> ProductStocks => Set<ProductStock>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,8 +48,6 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.Property(p => p.Description).HasMaxLength(1000);
                 entity.Property(p => p.Sku).IsRequired().HasMaxLength(50);
                 entity.Property(p => p.Price).IsRequired().HasColumnType("numeric(18,2)");
-                entity.Property(p => p.StockQuantity).IsRequired();
-                entity.Property(p => p.MinimumStockQuantity).IsRequired();
                 entity.Property(p => p.Active).IsRequired();
                 entity.Property(p => p.CreatedAt).IsRequired();
 
@@ -72,6 +72,11 @@ namespace EstoqueFacil.Infrastructure.Data
                     .WithMany(p => p.StockMovements)
                     .HasForeignKey(m => m.ProductId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.Branch)
+                    .WithMany(b => b.StockMovements)
+                    .HasForeignKey(m => m.BranchId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Supplier>(entity =>
@@ -84,6 +89,36 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.Property(s => s.Phone).HasMaxLength(20);
                 entity.Property(s => s.Address).HasMaxLength(300);
                 entity.Property(s => s.CreatedAt).IsRequired();
+            });
+
+            modelBuilder.Entity<Branch>(entity =>
+            {
+                entity.ToTable("branches");
+                entity.HasKey(b => b.Id);
+                entity.Property(b => b.Name).IsRequired().HasMaxLength(150);
+                entity.Property(b => b.Address).HasMaxLength(300);
+                entity.Property(b => b.Active).IsRequired();
+                entity.Property(b => b.CreatedAt).IsRequired();
+            });
+
+            modelBuilder.Entity<ProductStock>(entity =>
+            {
+                entity.ToTable("product_stocks");
+                entity.HasKey(ps => ps.Id);
+                entity.Property(ps => ps.Quantity).IsRequired();
+                entity.Property(ps => ps.MinimumQuantity).IsRequired();
+
+                entity.HasIndex(ps => new { ps.ProductId, ps.BranchId }).IsUnique();
+
+                entity.HasOne(ps => ps.Product)
+                    .WithMany(p => p.ProductStocks)
+                    .HasForeignKey(ps => ps.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ps => ps.Branch)
+                    .WithMany(b => b.ProductStocks)
+                    .HasForeignKey(ps => ps.BranchId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

@@ -14,13 +14,22 @@ namespace EstoqueFacil.Infrastructure.Repositories
         public override async Task<IEnumerable<StockMovement>> GetAllAsync()
         {
             return await DbSet.Include(m => m.Product)
+                .Include(m => m.Branch)
                 .OrderByDescending(m => m.MovementDate)
                 .ToListAsync();
         }
 
-        public async Task<(IEnumerable<StockMovement> Items, int TotalCount)> GetPagedAsync(string? search, int page, int pageSize)
+        public async Task<(IEnumerable<StockMovement> Items, int TotalCount)> GetPagedAsync(string? search, int? branchId, int page, int pageSize)
         {
-            var query = DbSet.Include(m => m.Product).AsQueryable();
+            var query = DbSet
+                .Include(m => m.Product).ThenInclude(p => p.ProductStocks)
+                .Include(m => m.Branch)
+                .AsQueryable();
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(m => m.BranchId == branchId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -39,17 +48,28 @@ namespace EstoqueFacil.Infrastructure.Repositories
             return (items, totalCount);
         }
 
-        public async Task<IEnumerable<StockMovement>> GetByDateRangeAsync(DateTime from, DateTime to)
+        public async Task<IEnumerable<StockMovement>> GetByDateRangeAsync(DateTime from, DateTime to, int? branchId)
         {
-            return await DbSet.Include(m => m.Product)
-                .Where(m => m.MovementDate >= from && m.MovementDate <= to)
+            var query = DbSet
+                .Include(m => m.Product).ThenInclude(p => p.ProductStocks)
+                .Include(m => m.Branch)
+                .Where(m => m.MovementDate >= from && m.MovementDate <= to);
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(m => m.BranchId == branchId.Value);
+            }
+
+            return await query
                 .OrderByDescending(m => m.MovementDate)
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<StockMovement>> GetByProductIdAsync(int productId)
         {
-            return await DbSet.Include(m => m.Product)
+            return await DbSet
+                .Include(m => m.Product).ThenInclude(p => p.ProductStocks)
+                .Include(m => m.Branch)
                 .Where(m => m.ProductId == productId)
                 .OrderByDescending(m => m.MovementDate)
                 .ToListAsync();
