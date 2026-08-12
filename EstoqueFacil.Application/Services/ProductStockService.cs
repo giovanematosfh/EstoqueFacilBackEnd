@@ -61,6 +61,7 @@ namespace EstoqueFacil.Application.Services
 
             var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(productId, branchId);
             productStock.MinimumQuantity = dto.MinimumQuantity;
+            productStock.PurchaseRequestNumber = dto.PurchaseRequestNumber;
 
             await _unitOfWork.CommitAsync();
 
@@ -91,7 +92,8 @@ namespace EstoqueFacil.Application.Services
                 BranchId = productStock.BranchId,
                 BranchName = productStock.Branch?.Name ?? string.Empty,
                 Quantity = productStock.Quantity,
-                MinimumQuantity = productStock.MinimumQuantity
+                MinimumQuantity = productStock.MinimumQuantity,
+                PurchaseRequestNumber = productStock.PurchaseRequestNumber
             };
         }
     }

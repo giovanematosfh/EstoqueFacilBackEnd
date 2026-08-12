@@ -12,5 +12,7 @@ namespace EstoqueFacil.Application.Dtos
         public string? Reason { get; set; }
         public DateTime MovementDate { get; set; }
         public int StockBalanceAfter { get; set; }
+        public string? RequesterName { get; set; }
+        public string? Sector { get; set; }
     }
 }

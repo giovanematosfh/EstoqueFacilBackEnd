@@ -67,6 +67,8 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.Property(m => m.Quantity).IsRequired();
                 entity.Property(m => m.Reason).HasMaxLength(300);
                 entity.Property(m => m.MovementDate).IsRequired();
+                entity.Property(m => m.RequesterName).HasMaxLength(150);
+                entity.Property(m => m.Sector).HasMaxLength(100);
 
                 entity.HasOne(m => m.Product)
                     .WithMany(p => p.StockMovements)
@@ -107,6 +109,7 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.HasKey(ps => ps.Id);
                 entity.Property(ps => ps.Quantity).IsRequired();
                 entity.Property(ps => ps.MinimumQuantity).IsRequired();
+                entity.Property(ps => ps.PurchaseRequestNumber).HasMaxLength(50);
 
                 entity.HasIndex(ps => new { ps.ProductId, ps.BranchId }).IsUnique();
 

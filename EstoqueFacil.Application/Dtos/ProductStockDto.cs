@@ -9,6 +9,7 @@ namespace EstoqueFacil.Application.Dtos
         public string BranchName { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public int MinimumQuantity { get; set; }
+        public string? PurchaseRequestNumber { get; set; }
         public bool LowStock => Quantity <= MinimumQuantity;
     }
 }

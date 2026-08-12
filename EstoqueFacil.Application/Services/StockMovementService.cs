@@ -80,7 +80,9 @@ namespace EstoqueFacil.Application.Services
                 Type = dto.Type,
                 Quantity = dto.Quantity,
                 Reason = dto.Reason,
-                MovementDate = DateTime.UtcNow
+                MovementDate = DateTime.UtcNow,
+                RequesterName = dto.RequesterName,
+                Sector = dto.Sector
             };
 
             _unitOfWork.StockMovements.Add(movement);
@@ -109,7 +111,9 @@ namespace EstoqueFacil.Application.Services
                 Quantity = movement.Quantity,
                 Reason = movement.Reason,
                 MovementDate = movement.MovementDate,
-                StockBalanceAfter = currentBalance
+                StockBalanceAfter = currentBalance,
+                RequesterName = movement.RequesterName,
+                Sector = movement.Sector
             };
         }
     }
