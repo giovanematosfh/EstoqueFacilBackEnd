@@ -72,6 +72,17 @@ namespace EstoqueFacil.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> GetLowStockCountAsync()
+        {
+            return await DbSet.CountAsync(ps => ps.Quantity <= ps.MinimumQuantity);
+        }
+
+        public async Task<decimal> GetTotalStockValueAsync()
+        {
+            return await DbSet.Include(ps => ps.Product)
+                .SumAsync(ps => ps.Quantity * ps.Product.Price);
+        }
+
         public async Task CreateForAllBranchesAsync(int productId)
         {
             var branchIds = await Context.Set<Branch>().Where(b => b.Active).Select(b => b.Id).ToListAsync();

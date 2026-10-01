@@ -12,6 +12,5 @@ namespace EstoqueFacil.Domain.Model
 
         public int Quantity { get; set; }
         public int MinimumQuantity { get; set; }
-        public string? PurchaseRequestNumber { get; set; }
     }
 }

@@ -39,9 +39,9 @@ namespace EstoqueFacil.API.Controllers
         }
 
         [HttpPut("{productId}")]
-        public async Task<IActionResult> UpdateMinimum(int productId, [FromQuery] int branchId, [FromBody] UpdateProductStockDto dto)
+        public async Task<IActionResult> Update(int productId, [FromQuery] int branchId, [FromBody] UpdateProductStockDto dto)
         {
-            var productStock = await _productStockService.UpdateMinimumAsync(productId, branchId, dto);
+            var productStock = await _productStockService.UpdateAsync(productId, branchId, dto);
             return Ok(productStock);
         }
     }

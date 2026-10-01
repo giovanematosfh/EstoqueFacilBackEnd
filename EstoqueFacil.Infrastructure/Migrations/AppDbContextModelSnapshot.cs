@@ -139,10 +139,6 @@ namespace EstoqueFacil.Infrastructure.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("PurchaseRequestNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
@@ -154,6 +150,40 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("product_stocks", (string)null);
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.PurchaseRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("purchase_requests", (string)null);
                 });
 
             modelBuilder.Entity("EstoqueFacil.Domain.Model.StockMovement", b =>
@@ -461,6 +491,25 @@ namespace EstoqueFacil.Infrastructure.Migrations
 
                     b.HasOne("EstoqueFacil.Domain.Model.Product", "Product")
                         .WithMany("ProductStocks")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.PurchaseRequest", b =>
+                {
+                    b.HasOne("EstoqueFacil.Domain.Model.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EstoqueFacil.Domain.Model.Product", "Product")
+                        .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

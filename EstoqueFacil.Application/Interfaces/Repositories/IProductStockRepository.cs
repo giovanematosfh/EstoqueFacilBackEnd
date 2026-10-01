@@ -8,6 +8,8 @@ namespace EstoqueFacil.Application.Interfaces.Repositories
         Task<(IEnumerable<ProductStock> Items, int TotalCount)> GetPagedByBranchAsync(int branchId, string? search, int page, int pageSize);
         Task<IEnumerable<ProductStock>> GetAllByBranchAsync(int branchId);
         Task<IEnumerable<ProductStock>> GetLowStockAsync(int branchId);
+        Task<int> GetLowStockCountAsync();
+        Task<decimal> GetTotalStockValueAsync();
         Task CreateForAllBranchesAsync(int productId);
         Task CreateForAllProductsAsync(int branchId);
     }

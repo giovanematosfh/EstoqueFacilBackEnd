@@ -7,11 +7,11 @@ namespace EstoqueFacil.Application.Validators
     {
         public UpdateProductStockDtoValidator()
         {
-            RuleFor(ps => ps.MinimumQuantity)
-                .GreaterThanOrEqualTo(0).WithMessage("O estoque mínimo não pode ser negativo.");
+            RuleFor(ps => ps.Quantity)
+                .GreaterThanOrEqualTo(0).WithMessage("A quantidade em estoque não pode ser negativa.");
 
-            RuleFor(ps => ps.PurchaseRequestNumber)
-                .MaximumLength(50).WithMessage("O número da solicitação de compra deve ter no máximo 50 caracteres.");
+            RuleFor(ps => ps.MinimumQuantity)
+                .GreaterThanOrEqualTo(0).WithMessage("O estoque de segurança não pode ser negativo.");
         }
     }
 }

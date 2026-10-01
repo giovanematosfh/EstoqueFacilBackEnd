@@ -47,5 +47,10 @@ namespace EstoqueFacil.Infrastructure.Repositories
 
             return (items, totalCount);
         }
+
+        public async Task<int> CountAsync()
+        {
+            return await DbSet.CountAsync();
+        }
     }
 }

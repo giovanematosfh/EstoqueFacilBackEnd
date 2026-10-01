@@ -13,6 +13,7 @@ namespace EstoqueFacil.Infrastructure.Repositories
         private ISupplierRepository? _suppliers;
         private IBranchRepository? _branches;
         private IProductStockRepository? _productStocks;
+        private IPurchaseRequestRepository? _purchaseRequests;
 
         public UnitOfWork(AppDbContext context)
         {
@@ -30,6 +31,8 @@ namespace EstoqueFacil.Infrastructure.Repositories
         public IBranchRepository Branches => _branches ??= new BranchRepository(_context);
 
         public IProductStockRepository ProductStocks => _productStocks ??= new ProductStockRepository(_context);
+
+        public IPurchaseRequestRepository PurchaseRequests => _purchaseRequests ??= new PurchaseRequestRepository(_context);
 
         public Task<int> CommitAsync()
         {

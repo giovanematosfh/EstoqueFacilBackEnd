@@ -8,5 +8,6 @@ namespace EstoqueFacil.Application.Interfaces.Repositories
         Task<IEnumerable<Product>> GetAllWithCategoryAsync();
         Task<bool> ExistsWithSkuAsync(string sku, int? ignoreId = null);
         Task<(IEnumerable<Product> Items, int TotalCount)> GetPagedAsync(string? search, int page, int pageSize);
+        Task<int> CountAsync();
     }
 }

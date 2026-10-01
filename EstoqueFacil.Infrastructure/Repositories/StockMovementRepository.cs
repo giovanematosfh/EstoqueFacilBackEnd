@@ -65,6 +65,21 @@ namespace EstoqueFacil.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> CountByDateRangeAsync(DateTime from, DateTime to)
+        {
+            return await DbSet.CountAsync(m => m.MovementDate >= from && m.MovementDate <= to);
+        }
+
+        public async Task<IEnumerable<StockMovement>> GetRecentAsync(int count)
+        {
+            return await DbSet
+                .Include(m => m.Product)
+                .Include(m => m.Branch)
+                .OrderByDescending(m => m.MovementDate)
+                .Take(count)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<StockMovement>> GetByProductIdAsync(int productId)
         {
             return await DbSet

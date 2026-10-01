@@ -18,6 +18,7 @@ namespace EstoqueFacil.Infrastructure.Data
         public DbSet<Supplier> Suppliers => Set<Supplier>();
         public DbSet<Branch> Branches => Set<Branch>();
         public DbSet<ProductStock> ProductStocks => Set<ProductStock>();
+        public DbSet<PurchaseRequest> PurchaseRequests => Set<PurchaseRequest>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -109,7 +110,6 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.HasKey(ps => ps.Id);
                 entity.Property(ps => ps.Quantity).IsRequired();
                 entity.Property(ps => ps.MinimumQuantity).IsRequired();
-                entity.Property(ps => ps.PurchaseRequestNumber).HasMaxLength(50);
 
                 entity.HasIndex(ps => new { ps.ProductId, ps.BranchId }).IsUnique();
 
@@ -122,6 +122,25 @@ namespace EstoqueFacil.Infrastructure.Data
                     .WithMany(b => b.ProductStocks)
                     .HasForeignKey(ps => ps.BranchId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PurchaseRequest>(entity =>
+            {
+                entity.ToTable("purchase_requests");
+                entity.HasKey(pr => pr.Id);
+                entity.Property(pr => pr.RequestNumber).IsRequired().HasMaxLength(50);
+                entity.Property(pr => pr.RequestDate).IsRequired();
+                entity.Property(pr => pr.CreatedAt).IsRequired();
+
+                entity.HasOne(pr => pr.Product)
+                    .WithMany()
+                    .HasForeignKey(pr => pr.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(pr => pr.Branch)
+                    .WithMany()
+                    .HasForeignKey(pr => pr.BranchId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

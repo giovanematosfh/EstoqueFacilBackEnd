@@ -47,5 +47,12 @@ namespace EstoqueFacil.API.Controllers
             var movement = await _stockMovementService.RegisterAsync(dto);
             return CreatedAtAction(nameof(GetByProduct), new { productId = movement.ProductId }, movement);
         }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateStockMovementDto dto)
+        {
+            var movement = await _stockMovementService.UpdateAsync(id, dto);
+            return Ok(movement);
+        }
     }
 }

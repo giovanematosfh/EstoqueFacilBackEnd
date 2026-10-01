@@ -8,6 +8,7 @@ namespace EstoqueFacil.Application.Interfaces.Repositories
         ISupplierRepository Suppliers { get; }
         IBranchRepository Branches { get; }
         IProductStockRepository ProductStocks { get; }
+        IPurchaseRequestRepository PurchaseRequests { get; }
 
         Task<int> CommitAsync();
     }

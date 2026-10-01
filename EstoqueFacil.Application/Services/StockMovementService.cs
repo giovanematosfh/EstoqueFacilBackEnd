@@ -93,6 +93,52 @@ namespace EstoqueFacil.Application.Services
             return MapToDto(movement, productStock.Quantity);
         }
 
+        public async Task<StockMovementDto> UpdateAsync(int id, UpdateStockMovementDto dto)
+        {
+            var movement = await _unitOfWork.StockMovements.GetByIdAsync(id);
+            if (movement == null)
+            {
+                throw new NotFoundException($"Movimentação com id {id} não foi encontrada.");
+            }
+
+            var product = await _unitOfWork.Products.GetByIdAsync(movement.ProductId);
+            if (product == null)
+            {
+                throw new NotFoundException($"Produto com id {movement.ProductId} não foi encontrado.");
+            }
+
+            var branch = await _unitOfWork.Branches.GetByIdAsync(movement.BranchId);
+            if (branch == null)
+            {
+                throw new NotFoundException($"Filial com id {movement.BranchId} não foi encontrada.");
+            }
+
+            var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(movement.ProductId, movement.BranchId);
+
+            var oldEffect = movement.Type == MovementType.Inbound ? movement.Quantity : -movement.Quantity;
+            var newEffect = movement.Type == MovementType.Inbound ? dto.Quantity : -dto.Quantity;
+            var newBalance = productStock.Quantity - oldEffect + newEffect;
+
+            if (newBalance < 0)
+            {
+                throw new BusinessException(
+                    $"Não é possível alterar a quantidade: o saldo de '{product.Name}' na filial '{branch.Name}' ficaria negativo.");
+            }
+
+            productStock.Quantity = newBalance;
+
+            movement.Quantity = dto.Quantity;
+            movement.Reason = dto.Reason;
+            movement.RequesterName = dto.RequesterName;
+            movement.Sector = dto.Sector;
+
+            await _unitOfWork.CommitAsync();
+
+            movement.Product = product;
+            movement.Branch = branch;
+            return MapToDto(movement, productStock.Quantity);
+        }
+
         private static int ResolveBalance(StockMovement movement)
         {
             return movement.Product?.ProductStocks?.FirstOrDefault(ps => ps.BranchId == movement.BranchId)?.Quantity ?? 0;

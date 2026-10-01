@@ -8,5 +8,6 @@ namespace EstoqueFacil.Application.Interfaces.Services
         Task<IEnumerable<StockMovementDto>> GetByProductIdAsync(int productId);
         Task<IEnumerable<StockMovementDto>> GetByDateRangeAsync(DateTime from, DateTime to, int? branchId);
         Task<StockMovementDto> RegisterAsync(CreateStockMovementDto dto);
+        Task<StockMovementDto> UpdateAsync(int id, UpdateStockMovementDto dto);
     }
 }

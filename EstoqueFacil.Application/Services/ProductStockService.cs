@@ -49,7 +49,7 @@ namespace EstoqueFacil.Application.Services
             return items.Select(MapToDto);
         }
 
-        public async Task<ProductStockDto> UpdateMinimumAsync(int productId, int branchId, UpdateProductStockDto dto)
+        public async Task<ProductStockDto> UpdateAsync(int productId, int branchId, UpdateProductStockDto dto)
         {
             await EnsureBranchExistsAsync(branchId);
 
@@ -60,8 +60,8 @@ namespace EstoqueFacil.Application.Services
             }
 
             var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(productId, branchId);
+            productStock.Quantity = dto.Quantity;
             productStock.MinimumQuantity = dto.MinimumQuantity;
-            productStock.PurchaseRequestNumber = dto.PurchaseRequestNumber;
 
             await _unitOfWork.CommitAsync();
 
@@ -92,8 +92,7 @@ namespace EstoqueFacil.Application.Services
                 BranchId = productStock.BranchId,
                 BranchName = productStock.Branch?.Name ?? string.Empty,
                 Quantity = productStock.Quantity,
-                MinimumQuantity = productStock.MinimumQuantity,
-                PurchaseRequestNumber = productStock.PurchaseRequestNumber
+                MinimumQuantity = productStock.MinimumQuantity
             };
         }
     }
