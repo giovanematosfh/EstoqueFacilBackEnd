@@ -2,29 +2,46 @@ using System.Security.Claims;
 using EstoqueFacil.Application.Constants;
 using EstoqueFacil.Application.Dtos;
 using EstoqueFacil.Application.Exceptions;
+using EstoqueFacil.Application.Interfaces.Services;
 using EstoqueFacil.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EstoqueFacil.API.Controllers
 {
+    // Usuários da empresa do admin logado; nunca enxerga usuários de outras empresas.
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = Roles.Admin)]
     public class UsersController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ITenantProvider _tenantProvider;
+        private readonly IPlanLimitService _planLimits;
 
-        public UsersController(UserManager<ApplicationUser> userManager)
+        public UsersController(
+            UserManager<ApplicationUser> userManager,
+            ITenantProvider tenantProvider,
+            IPlanLimitService planLimits)
         {
             _userManager = userManager;
+            _tenantProvider = tenantProvider;
+            _planLimits = planLimits;
         }
+
+        private int CompanyId => _tenantProvider.CompanyId
+            ?? throw new InvalidOperationException("Não há empresa no contexto da requisição.");
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var users = _userManager.Users.OrderBy(u => u.FullName).ToList();
+            var users = await _userManager.Users
+                .Where(u => u.CompanyId == CompanyId)
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
+
             var result = new List<UserDto>();
 
             foreach (var user in users)
@@ -35,14 +52,40 @@ namespace EstoqueFacil.API.Controllers
             return Ok(result);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
+        {
+            await _planLimits.EnsureCanAddUserAsync(CompanyId);
+
+            if (await _userManager.FindByEmailAsync(dto.Email) != null)
+            {
+                throw new BusinessException($"Já existe um usuário com o e-mail '{dto.Email}'.");
+            }
+
+            var user = new ApplicationUser
+            {
+                UserName = dto.Email,
+                Email = dto.Email,
+                FullName = dto.FullName,
+                EmailConfirmed = true,
+                CompanyId = CompanyId
+            };
+
+            var result = await _userManager.CreateAsync(user, dto.Password);
+            if (!result.Succeeded)
+            {
+                throw new BusinessException(string.Join(" ", result.Errors.Select(e => e.Description)));
+            }
+
+            await _userManager.AddToRoleAsync(user, dto.Role);
+
+            return Ok(await MapToDtoAsync(user));
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateUserDto dto)
         {
-            var user = await _userManager.FindByIdAsync(id.ToString());
-            if (user == null)
-            {
-                throw new NotFoundException($"Usuário com id {id} não foi encontrado.");
-            }
+            var user = await FindCompanyUserAsync(id);
 
             user.FullName = dto.FullName;
 
@@ -80,13 +123,13 @@ namespace EstoqueFacil.API.Controllers
                 throw new BusinessException("Você não pode alterar seu próprio papel.");
             }
 
-            var user = await _userManager.FindByIdAsync(id.ToString());
-            if (user == null)
-            {
-                throw new NotFoundException($"Usuário com id {id} não foi encontrado.");
-            }
+            var user = await FindCompanyUserAsync(id);
 
-            var currentRoles = await _userManager.GetRolesAsync(user);
+            // Troca só Admin/User; o papel de SuperAdmin não é gerenciado por aqui.
+            var currentRoles = (await _userManager.GetRolesAsync(user))
+                .Where(r => r == Roles.Admin || r == Roles.User)
+                .ToList();
+
             if (currentRoles.Count > 0)
             {
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -105,11 +148,7 @@ namespace EstoqueFacil.API.Controllers
                 throw new BusinessException("Você não pode desativar sua própria conta.");
             }
 
-            var user = await _userManager.FindByIdAsync(id.ToString());
-            if (user == null)
-            {
-                throw new NotFoundException($"Usuário com id {id} não foi encontrado.");
-            }
+            var user = await FindCompanyUserAsync(id);
 
             await _userManager.SetLockoutEnabledAsync(user, true);
             await _userManager.SetLockoutEndDateAsync(user, dto.IsActive ? null : DateTimeOffset.MaxValue);
@@ -125,14 +164,16 @@ namespace EstoqueFacil.API.Controllers
                 throw new BusinessException("Você não pode excluir sua própria conta.");
             }
 
-            var user = await _userManager.FindByIdAsync(id.ToString());
-            if (user == null)
-            {
-                throw new NotFoundException($"Usuário com id {id} não foi encontrado.");
-            }
+            var user = await FindCompanyUserAsync(id);
 
             await _userManager.DeleteAsync(user);
             return NoContent();
+        }
+
+        private async Task<ApplicationUser> FindCompanyUserAsync(int id)
+        {
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id && u.CompanyId == CompanyId);
+            return user ?? throw new NotFoundException($"Usuário com id {id} não foi encontrado.");
         }
 
         private int GetCurrentUserId()
@@ -151,7 +192,7 @@ namespace EstoqueFacil.API.Controllers
                 Id = user.Id,
                 FullName = user.FullName,
                 Email = user.Email!,
-                Role = roles.FirstOrDefault() ?? Roles.User,
+                Role = roles.Contains(Roles.Admin) ? Roles.Admin : Roles.User,
                 EmailConfirmed = user.EmailConfirmed,
                 IsActive = isActive
             };

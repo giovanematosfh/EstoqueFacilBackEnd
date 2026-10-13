@@ -9,10 +9,12 @@ namespace EstoqueFacil.Application.Services
     public class BranchService : IBranchService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPlanLimitService _planLimits;
 
-        public BranchService(IUnitOfWork unitOfWork)
+        public BranchService(IUnitOfWork unitOfWork, IPlanLimitService planLimits)
         {
             _unitOfWork = unitOfWork;
+            _planLimits = planLimits;
         }
 
         public async Task<PagedResultDto<BranchDto>> GetAllAsync(string? search, int page, int pageSize)
@@ -44,6 +46,8 @@ namespace EstoqueFacil.Application.Services
 
         public async Task<BranchDto> CreateAsync(CreateBranchDto dto)
         {
+            await _planLimits.EnsureCanAddBranchAsync();
+
             if (await _unitOfWork.Branches.ExistsWithNameAsync(dto.Name))
             {
                 throw new BusinessException($"Já existe uma filial com o nome '{dto.Name}'.");

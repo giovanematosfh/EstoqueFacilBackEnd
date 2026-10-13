@@ -1,4 +1,5 @@
 using EstoqueFacil.Application.Interfaces.Repositories;
+using EstoqueFacil.Domain.Model;
 using EstoqueFacil.Infrastructure.Data;
 
 namespace EstoqueFacil.Infrastructure.Repositories
@@ -13,6 +14,8 @@ namespace EstoqueFacil.Infrastructure.Repositories
         private ISupplierRepository? _suppliers;
         private IBranchRepository? _branches;
         private IProductStockRepository? _productStocks;
+        private IGenericRepository<Plan>? _plans;
+        private IGenericRepository<Company>? _companies;
 
         public UnitOfWork(AppDbContext context)
         {
@@ -30,6 +33,10 @@ namespace EstoqueFacil.Infrastructure.Repositories
         public IBranchRepository Branches => _branches ??= new BranchRepository(_context);
 
         public IProductStockRepository ProductStocks => _productStocks ??= new ProductStockRepository(_context);
+
+        public IGenericRepository<Plan> Plans => _plans ??= new GenericRepository<Plan>(_context);
+
+        public IGenericRepository<Company> Companies => _companies ??= new GenericRepository<Company>(_context);
 
         public Task<int> CommitAsync()
         {

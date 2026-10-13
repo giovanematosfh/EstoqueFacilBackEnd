@@ -3,10 +3,14 @@ using EstoqueFacil.Application.Constants;
 using EstoqueFacil.Application.Dtos.Auth;
 using EstoqueFacil.Application.Exceptions;
 using EstoqueFacil.Application.Interfaces.Services;
+using EstoqueFacil.API.Middlewares;
+using EstoqueFacil.Domain.Model;
+using EstoqueFacil.Infrastructure.Data;
 using EstoqueFacil.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EstoqueFacil.API.Controllers
 {
@@ -19,8 +23,10 @@ namespace EstoqueFacil.API.Controllers
         private readonly ITokenService _tokenService;
         private readonly IEmailSender _emailSender;
         private readonly IConfiguration _configuration;
+        private readonly AppDbContext _context;
 
         public AuthController(
+            AppDbContext context,
             UserManager<ApplicationUser> userManager,
             ITokenService tokenService,
             IEmailSender emailSender,
@@ -30,46 +36,7 @@ namespace EstoqueFacil.API.Controllers
             _tokenService = tokenService;
             _emailSender = emailSender;
             _configuration = configuration;
-        }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
-        {
-            var user = new ApplicationUser
-            {
-                UserName = dto.Email,
-                Email = dto.Email,
-                FullName = dto.FullName
-            };
-
-            var result = await _userManager.CreateAsync(user, dto.Password);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(" ", result.Errors.Select(e => e.Description));
-                throw new BusinessException(errors);
-            }
-
-            // TODO: reativar quando o SMTP (appsettings.json -> Smtp:Password) estiver configurado corretamente.
-            // try
-            // {
-            //     await SendConfirmationEmailAsync(user);
-            // }
-            // catch (Exception)
-            // {
-            //     await _userManager.DeleteAsync(user);
-            //     throw new BusinessException(
-            //         "Não foi possível enviar o e-mail de confirmação. Tente novamente em instantes.");
-            // }
-            //
-            // return Ok(new RegisterResponseDto
-            // {
-            //     Message = "Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de entrar."
-            // });
-
-            await _userManager.ConfirmEmailAsync(user, await _userManager.GenerateEmailConfirmationTokenAsync(user));
-            await _userManager.AddToRoleAsync(user, Roles.User);
-
-            return Ok(await BuildAuthResponseAsync(user));
+            _context = context;
         }
 
         [HttpPost("login")]
@@ -92,7 +59,17 @@ namespace EstoqueFacil.API.Controllers
                 throw new BusinessException("Sua conta foi desativada. Entre em contato com um administrador.");
             }
 
-            return Ok(await BuildAuthResponseAsync(user));
+            var company = await _context.Companies.AsNoTracking().FirstAsync(c => c.Id == user.CompanyId);
+            if (!await _userManager.IsInRoleAsync(user, Roles.SuperAdmin))
+            {
+                var blockedMessage = CompanyStatusMiddleware.GetBlockedMessage(company.Active, company.DueDate);
+                if (blockedMessage != null)
+                {
+                    throw new BusinessException(blockedMessage);
+                }
+            }
+
+            return Ok(await BuildAuthResponseAsync(user, company));
         }
 
         [HttpGet("confirm-email")]
@@ -135,10 +112,10 @@ namespace EstoqueFacil.API.Controllers
             await _emailSender.SendAsync(user.Email!, "Confirme seu e-mail - Estoque Fácil", html);
         }
 
-        private async Task<AuthResponseDto> BuildAuthResponseAsync(ApplicationUser user)
+        private async Task<AuthResponseDto> BuildAuthResponseAsync(ApplicationUser user, Company company)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var (token, expiresAt) = _tokenService.GenerateToken(user.Id, user.Email!, user.FullName, roles);
+            var (token, expiresAt) = _tokenService.GenerateToken(user.Id, user.CompanyId, user.Email!, user.FullName, roles);
 
             return new AuthResponseDto
             {
@@ -149,7 +126,11 @@ namespace EstoqueFacil.API.Controllers
                     Id = user.Id,
                     Name = user.FullName,
                     Email = user.Email!,
-                    Role = roles.FirstOrDefault() ?? Roles.User
+                    Role = roles.Contains(Roles.Admin) ? Roles.Admin : Roles.User,
+                    IsSuperAdmin = roles.Contains(Roles.SuperAdmin),
+                    CompanyId = company.Id,
+                    CompanyName = company.Name,
+                    CompanyDueDate = company.DueDate
                 }
             };
         }

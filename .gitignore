@@ -21,3 +21,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Arquivos enviados (fotos de produtos)
+**/storage/
+appsettings.Test.json
+**/storage-test/

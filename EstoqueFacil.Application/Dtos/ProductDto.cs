@@ -12,5 +12,8 @@ namespace EstoqueFacil.Application.Dtos
         public DateTime? UpdatedAt { get; set; }
         public int CategoryId { get; set; }
         public string? CategoryName { get; set; }
+
+        // Caminho relativo à base da API, ex.: uploads/products/abc.jpg
+        public string? ImageUrl { get; set; }
     }
 }

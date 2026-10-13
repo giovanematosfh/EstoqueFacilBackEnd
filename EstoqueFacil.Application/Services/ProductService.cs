@@ -9,10 +9,16 @@ namespace EstoqueFacil.Application.Services
     public class ProductService : IProductService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPlanLimitService _planLimits;
+        private readonly IFileStorage _fileStorage;
 
-        public ProductService(IUnitOfWork unitOfWork)
+        public const string ImageFolder = "products";
+
+        public ProductService(IUnitOfWork unitOfWork, IPlanLimitService planLimits, IFileStorage fileStorage)
         {
             _unitOfWork = unitOfWork;
+            _planLimits = planLimits;
+            _fileStorage = fileStorage;
         }
 
         public async Task<PagedResultDto<ProductDto>> GetAllAsync(string? search, int page, int pageSize)
@@ -44,6 +50,8 @@ namespace EstoqueFacil.Application.Services
 
         public async Task<ProductDto> CreateAsync(CreateProductDto dto)
         {
+            await _planLimits.EnsureCanAddProductAsync();
+
             var category = await _unitOfWork.Categories.GetByIdAsync(dto.CategoryId);
             if (category == null)
             {
@@ -111,8 +119,55 @@ namespace EstoqueFacil.Application.Services
                 throw new NotFoundException($"Produto com id {id} não foi encontrado.");
             }
 
+            var imageFileName = product.ImageFileName;
+
             _unitOfWork.Products.Remove(product);
             await _unitOfWork.CommitAsync();
+
+            if (imageFileName != null)
+            {
+                _fileStorage.Delete(ImageFolder, imageFileName);
+            }
+        }
+
+        public async Task<ProductDto> SetImageAsync(int id, Stream content, string extension)
+        {
+            var product = await GetWithCategoryOrThrowAsync(id);
+            var previous = product.ImageFileName;
+
+            product.ImageFileName = await _fileStorage.SaveAsync(ImageFolder, content, extension);
+            product.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.CommitAsync();
+
+            if (previous != null)
+            {
+                _fileStorage.Delete(ImageFolder, previous);
+            }
+
+            return MapToDto(product);
+        }
+
+        public async Task<ProductDto> RemoveImageAsync(int id)
+        {
+            var product = await GetWithCategoryOrThrowAsync(id);
+            if (product.ImageFileName == null)
+            {
+                return MapToDto(product);
+            }
+
+            var previous = product.ImageFileName;
+            product.ImageFileName = null;
+            product.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.CommitAsync();
+
+            _fileStorage.Delete(ImageFolder, previous);
+            return MapToDto(product);
+        }
+
+        private async Task<Product> GetWithCategoryOrThrowAsync(int id)
+        {
+            var product = await _unitOfWork.Products.GetByIdWithCategoryAsync(id);
+            return product ?? throw new NotFoundException($"Produto com id {id} não foi encontrado.");
         }
 
         private static ProductDto MapToDto(Product product)
@@ -128,7 +183,8 @@ namespace EstoqueFacil.Application.Services
                 CreatedAt = product.CreatedAt,
                 UpdatedAt = product.UpdatedAt,
                 CategoryId = product.CategoryId,
-                CategoryName = product.Category?.Name
+                CategoryName = product.Category?.Name,
+                ImageUrl = product.ImageFileName == null ? null : $"uploads/{ImageFolder}/{product.ImageFileName}"
             };
         }
     }

@@ -1,8 +1,9 @@
 namespace EstoqueFacil.Domain.Model
 {
-    public class Supplier
+    public class Supplier : ITenantEntity
     {
         public int Id { get; set; }
+        public int CompanyId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Document { get; set; }
         public string? Email { get; set; }

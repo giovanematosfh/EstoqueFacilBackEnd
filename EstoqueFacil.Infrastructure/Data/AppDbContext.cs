@@ -1,3 +1,4 @@
+using EstoqueFacil.Application.Interfaces.Services;
 using EstoqueFacil.Domain.Model;
 using EstoqueFacil.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -8,9 +9,15 @@ namespace EstoqueFacil.Infrastructure.Data
 {
     public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        private readonly ITenantProvider _tenantProvider;
+
+        public AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvider tenantProvider) : base(options)
         {
+            _tenantProvider = tenantProvider;
         }
+
+        // Lido pelos filtros globais a cada consulta (por instância do contexto).
+        private int? CurrentCompanyId => _tenantProvider.CompanyId;
 
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<Product> Products => Set<Product>();
@@ -18,18 +25,87 @@ namespace EstoqueFacil.Infrastructure.Data
         public DbSet<Supplier> Suppliers => Set<Supplier>();
         public DbSet<Branch> Branches => Set<Branch>();
         public DbSet<ProductStock> ProductStocks => Set<ProductStock>();
+        public DbSet<Plan> Plans => Set<Plan>();
+        public DbSet<Company> Companies => Set<Company>();
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            AssignCompanyToNewEntities();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        public override int SaveChanges()
+        {
+            AssignCompanyToNewEntities();
+            return base.SaveChanges();
+        }
+
+        private void AssignCompanyToNewEntities()
+        {
+            foreach (var entry in ChangeTracker.Entries<ITenantEntity>().Where(e => e.State == EntityState.Added))
+            {
+                if (entry.Entity.CompanyId != 0)
+                {
+                    continue;
+                }
+
+                entry.Entity.CompanyId = CurrentCompanyId
+                    ?? throw new InvalidOperationException($"Não há empresa no contexto para gravar {entry.Entity.GetType().Name}.");
+            }
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<ApplicationUser>(entity => entity.ToTable("users"));
+            modelBuilder.Entity<ApplicationUser>(entity =>
+            {
+                entity.ToTable("users");
+                entity.HasOne(u => u.Company)
+                    .WithMany()
+                    .HasForeignKey(u => u.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
             modelBuilder.Entity<IdentityRole<int>>(entity => entity.ToTable("roles"));
             modelBuilder.Entity<IdentityUserRole<int>>(entity => entity.ToTable("user_roles"));
             modelBuilder.Entity<IdentityUserClaim<int>>(entity => entity.ToTable("user_claims"));
             modelBuilder.Entity<IdentityUserLogin<int>>(entity => entity.ToTable("user_logins"));
             modelBuilder.Entity<IdentityUserToken<int>>(entity => entity.ToTable("user_tokens"));
             modelBuilder.Entity<IdentityRoleClaim<int>>(entity => entity.ToTable("role_claims"));
+
+            modelBuilder.Entity<Plan>(entity =>
+            {
+                entity.ToTable("plans");
+                entity.HasKey(p => p.Id);
+                entity.Property(p => p.Name).IsRequired().HasMaxLength(100);
+                entity.Property(p => p.Price).IsRequired().HasColumnType("numeric(18,2)");
+                entity.Property(p => p.Active).IsRequired();
+                entity.Property(p => p.CreatedAt).IsRequired();
+            });
+
+            modelBuilder.Entity<Company>(entity =>
+            {
+                entity.ToTable("companies");
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.Name).IsRequired().HasMaxLength(150);
+                entity.Property(c => c.Document).HasMaxLength(20);
+                entity.Property(c => c.Email).HasMaxLength(150);
+                entity.Property(c => c.Phone).HasMaxLength(20);
+                entity.Property(c => c.Active).IsRequired();
+                entity.Property(c => c.CreatedAt).IsRequired();
+
+                entity.HasOne(c => c.Plan)
+                    .WithMany(p => p.Companies)
+                    .HasForeignKey(c => c.PlanId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            ConfigureTenant<Category>(modelBuilder);
+            ConfigureTenant<Product>(modelBuilder);
+            ConfigureTenant<StockMovement>(modelBuilder);
+            ConfigureTenant<Supplier>(modelBuilder);
+            ConfigureTenant<Branch>(modelBuilder);
+            ConfigureTenant<ProductStock>(modelBuilder);
 
             modelBuilder.Entity<Category>(entity =>
             {
@@ -46,12 +122,13 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.HasKey(p => p.Id);
                 entity.Property(p => p.Name).IsRequired().HasMaxLength(150);
                 entity.Property(p => p.Description).HasMaxLength(1000);
+                entity.Property(p => p.ImageFileName).HasMaxLength(100);
                 entity.Property(p => p.Sku).IsRequired().HasMaxLength(50);
                 entity.Property(p => p.Price).IsRequired().HasColumnType("numeric(18,2)");
                 entity.Property(p => p.Active).IsRequired();
                 entity.Property(p => p.CreatedAt).IsRequired();
 
-                entity.HasIndex(p => p.Sku).IsUnique();
+                entity.HasIndex(p => new { p.CompanyId, p.Sku }).IsUnique();
 
                 entity.HasOne(p => p.Category)
                     .WithMany(c => c.Products)
@@ -122,6 +199,20 @@ namespace EstoqueFacil.Infrastructure.Data
                     .WithMany(b => b.ProductStocks)
                     .HasForeignKey(ps => ps.BranchId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+        }
+
+        // Cada empresa só enxerga os próprios registros; CompanyId referencia companies.
+        private void ConfigureTenant<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantEntity
+        {
+            modelBuilder.Entity<TEntity>(entity =>
+            {
+                entity.HasOne<Company>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasQueryFilter(e => e.CompanyId == CurrentCompanyId);
             });
         }
     }

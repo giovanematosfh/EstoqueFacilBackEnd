@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using EstoqueFacil.Application.Constants;
 using EstoqueFacil.Application.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -16,7 +17,7 @@ namespace EstoqueFacil.Infrastructure.Services
             _configuration = configuration;
         }
 
-        public (string Token, DateTime ExpiresAt) GenerateToken(int userId, string email, string fullName, IList<string> roles)
+        public (string Token, DateTime ExpiresAt) GenerateToken(int userId, int companyId, string email, string fullName, IList<string> roles)
         {
             var key = _configuration["Jwt:Key"]!;
             var issuer = _configuration["Jwt:Issuer"];
@@ -28,6 +29,7 @@ namespace EstoqueFacil.Infrastructure.Services
                 new(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new(JwtRegisteredClaimNames.Email, email),
                 new(ClaimTypes.Name, fullName),
+                new(TenantClaims.CompanyId, companyId.ToString()),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

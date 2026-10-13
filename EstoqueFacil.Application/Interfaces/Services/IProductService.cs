@@ -9,5 +9,7 @@ namespace EstoqueFacil.Application.Interfaces.Services
         Task<ProductDto> CreateAsync(CreateProductDto dto);
         Task<ProductDto> UpdateAsync(int id, UpdateProductDto dto);
         Task RemoveAsync(int id);
+        Task<ProductDto> SetImageAsync(int id, Stream content, string extension);
+        Task<ProductDto> RemoveImageAsync(int id);
     }
 }

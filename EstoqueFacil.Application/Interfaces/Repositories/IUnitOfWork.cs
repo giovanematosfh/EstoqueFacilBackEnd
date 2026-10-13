@@ -1,3 +1,5 @@
+using EstoqueFacil.Domain.Model;
+
 namespace EstoqueFacil.Application.Interfaces.Repositories
 {
     public interface IUnitOfWork : IDisposable
@@ -8,6 +10,8 @@ namespace EstoqueFacil.Application.Interfaces.Repositories
         ISupplierRepository Suppliers { get; }
         IBranchRepository Branches { get; }
         IProductStockRepository ProductStocks { get; }
+        IGenericRepository<Plan> Plans { get; }
+        IGenericRepository<Company> Companies { get; }
 
         Task<int> CommitAsync();
     }
