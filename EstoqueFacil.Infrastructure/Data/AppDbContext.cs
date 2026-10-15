@@ -25,6 +25,7 @@ namespace EstoqueFacil.Infrastructure.Data
         public DbSet<Supplier> Suppliers => Set<Supplier>();
         public DbSet<Branch> Branches => Set<Branch>();
         public DbSet<ProductStock> ProductStocks => Set<ProductStock>();
+        public DbSet<PurchaseRequest> PurchaseRequests => Set<PurchaseRequest>();
         public DbSet<Plan> Plans => Set<Plan>();
         public DbSet<Company> Companies => Set<Company>();
 
@@ -106,6 +107,7 @@ namespace EstoqueFacil.Infrastructure.Data
             ConfigureTenant<Supplier>(modelBuilder);
             ConfigureTenant<Branch>(modelBuilder);
             ConfigureTenant<ProductStock>(modelBuilder);
+            ConfigureTenant<PurchaseRequest>(modelBuilder);
 
             modelBuilder.Entity<Category>(entity =>
             {
@@ -199,6 +201,31 @@ namespace EstoqueFacil.Infrastructure.Data
                     .WithMany(b => b.ProductStocks)
                     .HasForeignKey(ps => ps.BranchId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PurchaseRequest>(entity =>
+            {
+                entity.ToTable("purchase_requests");
+                entity.HasKey(pr => pr.Id);
+                entity.Property(pr => pr.Number).IsRequired().HasMaxLength(50);
+                entity.Property(pr => pr.Quantity).IsRequired();
+                entity.Property(pr => pr.RequestDate).IsRequired();
+                entity.Property(pr => pr.Status).IsRequired();
+                entity.Property(pr => pr.RequesterName).HasMaxLength(150);
+                entity.Property(pr => pr.Notes).HasMaxLength(500);
+                entity.Property(pr => pr.CreatedAt).IsRequired();
+
+                entity.HasIndex(pr => new { pr.BranchId, pr.RequestDate });
+
+                entity.HasOne(pr => pr.Product)
+                    .WithMany()
+                    .HasForeignKey(pr => pr.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(pr => pr.Branch)
+                    .WithMany()
+                    .HasForeignKey(pr => pr.BranchId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 

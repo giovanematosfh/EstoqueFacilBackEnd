@@ -92,6 +92,7 @@ builder.Services.AddScoped<IStockMovementService, StockMovementService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<IProductStockService, ProductStockService>();
+builder.Services.AddScoped<IPurchaseRequestService, PurchaseRequestService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<CategoryService>();
