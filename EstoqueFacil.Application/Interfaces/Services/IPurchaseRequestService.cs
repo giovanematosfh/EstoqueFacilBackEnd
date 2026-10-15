@@ -6,7 +6,7 @@ namespace EstoqueFacil.Application.Interfaces.Services
     public interface IPurchaseRequestService
     {
         Task<PagedResultDto<PurchaseRequestDto>> GetPagedAsync(int branchId, string? search, PurchaseRequestStatus? status, int? productId, int page, int pageSize);
-        Task<IEnumerable<PurchaseRequestDto>> GetByDateRangeAsync(int branchId, DateOnly from, DateOnly to);
+        Task<IEnumerable<PurchaseRequestDto>> GetByDateRangeAsync(int? branchId, DateOnly from, DateOnly to);
         Task<PurchaseRequestDto> GetByIdAsync(int id);
         Task<PurchaseRequestDto> CreateAsync(CreatePurchaseRequestDto dto);
         Task<PurchaseRequestDto> ReceiveAsync(int id, ReceivePurchaseRequestDto dto);

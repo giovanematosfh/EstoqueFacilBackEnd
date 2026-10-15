@@ -56,20 +56,29 @@ namespace EstoqueFacil.Infrastructure.Repositories
             return (items, totalCount);
         }
 
-        public async Task<IEnumerable<ProductStock>> GetAllByBranchAsync(int branchId)
+        // branchId null = todas as filiais.
+        public async Task<IEnumerable<ProductStock>> GetAllByBranchAsync(int? branchId)
         {
-            return await DbSet.Include(ps => ps.Product)
-                .Where(ps => ps.BranchId == branchId)
-                .OrderBy(ps => ps.Product.Name)
+            return await QueryByBranch(branchId).ToListAsync();
+        }
+
+        public async Task<IEnumerable<ProductStock>> GetLowStockAsync(int? branchId)
+        {
+            return await QueryByBranch(branchId)
+                .Where(ps => ps.Quantity <= ps.MinimumQuantity)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<ProductStock>> GetLowStockAsync(int branchId)
+        private IQueryable<ProductStock> QueryByBranch(int? branchId)
         {
-            return await DbSet.Include(ps => ps.Product)
-                .Where(ps => ps.BranchId == branchId && ps.Quantity <= ps.MinimumQuantity)
-                .OrderBy(ps => ps.Product.Name)
-                .ToListAsync();
+            var query = DbSet.Include(ps => ps.Product).Include(ps => ps.Branch).AsQueryable();
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(ps => ps.BranchId == branchId.Value);
+            }
+
+            return query.OrderBy(ps => ps.Product.Name).ThenBy(ps => ps.Branch.Name);
         }
 
         public async Task CreateForAllBranchesAsync(int productId)

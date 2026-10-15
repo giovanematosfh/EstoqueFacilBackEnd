@@ -33,17 +33,23 @@ namespace EstoqueFacil.Application.Services
             };
         }
 
-        public async Task<IEnumerable<ProductStockDto>> GetLowStockAsync(int branchId)
+        public async Task<IEnumerable<ProductStockDto>> GetLowStockAsync(int? branchId)
         {
-            await EnsureBranchExistsAsync(branchId);
+            if (branchId.HasValue)
+            {
+                await EnsureBranchExistsAsync(branchId.Value);
+            }
 
             var items = await _unitOfWork.ProductStocks.GetLowStockAsync(branchId);
             return items.Select(MapToDto);
         }
 
-        public async Task<IEnumerable<ProductStockDto>> GetAllByBranchAsync(int branchId)
+        public async Task<IEnumerable<ProductStockDto>> GetAllByBranchAsync(int? branchId)
         {
-            await EnsureBranchExistsAsync(branchId);
+            if (branchId.HasValue)
+            {
+                await EnsureBranchExistsAsync(branchId.Value);
+            }
 
             var items = await _unitOfWork.ProductStocks.GetAllByBranchAsync(branchId);
             return items.Select(MapToDto);

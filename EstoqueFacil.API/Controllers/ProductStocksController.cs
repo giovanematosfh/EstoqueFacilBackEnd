@@ -25,14 +25,14 @@ namespace EstoqueFacil.API.Controllers
         }
 
         [HttpGet("low-stock")]
-        public async Task<IActionResult> GetLowStock([FromQuery] int branchId)
+        public async Task<IActionResult> GetLowStock([FromQuery] int? branchId)
         {
             var productStocks = await _productStockService.GetLowStockAsync(branchId);
             return Ok(productStocks);
         }
 
         [HttpGet("report")]
-        public async Task<IActionResult> GetReport([FromQuery] int branchId)
+        public async Task<IActionResult> GetReport([FromQuery] int? branchId)
         {
             var productStocks = await _productStockService.GetAllByBranchAsync(branchId);
             return Ok(productStocks);

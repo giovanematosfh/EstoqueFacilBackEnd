@@ -55,13 +55,22 @@ namespace EstoqueFacil.Infrastructure.Repositories
             return (items, totalCount);
         }
 
-        public async Task<IEnumerable<PurchaseRequest>> GetByDateRangeAsync(int branchId, DateOnly from, DateOnly to)
+        // branchId null = todas as filiais.
+        public async Task<IEnumerable<PurchaseRequest>> GetByDateRangeAsync(int? branchId, DateOnly from, DateOnly to)
         {
-            return await DbSet
+            var query = DbSet
                 .Include(pr => pr.Product)
                 .Include(pr => pr.Branch)
-                .Where(pr => pr.BranchId == branchId && pr.RequestDate >= from && pr.RequestDate <= to)
+                .Where(pr => pr.RequestDate >= from && pr.RequestDate <= to);
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(pr => pr.BranchId == branchId.Value);
+            }
+
+            return await query
                 .OrderBy(pr => pr.Product.Name)
+                .ThenBy(pr => pr.Branch.Name)
                 .ThenBy(pr => pr.RequestDate)
                 .ToListAsync();
         }

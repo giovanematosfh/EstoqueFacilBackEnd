@@ -26,7 +26,7 @@ namespace EstoqueFacil.API.Controllers
         }
 
         [HttpGet("report")]
-        public async Task<IActionResult> GetReport([FromQuery] int branchId, [FromQuery] DateOnly from, [FromQuery] DateOnly to)
+        public async Task<IActionResult> GetReport([FromQuery] int? branchId, [FromQuery] DateOnly from, [FromQuery] DateOnly to)
         {
             var purchaseRequests = await _purchaseRequestService.GetByDateRangeAsync(branchId, from, to);
             return Ok(purchaseRequests);

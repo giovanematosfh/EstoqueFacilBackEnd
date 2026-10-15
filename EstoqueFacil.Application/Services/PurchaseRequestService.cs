@@ -33,9 +33,12 @@ namespace EstoqueFacil.Application.Services
             };
         }
 
-        public async Task<IEnumerable<PurchaseRequestDto>> GetByDateRangeAsync(int branchId, DateOnly from, DateOnly to)
+        public async Task<IEnumerable<PurchaseRequestDto>> GetByDateRangeAsync(int? branchId, DateOnly from, DateOnly to)
         {
-            await EnsureBranchExistsAsync(branchId);
+            if (branchId.HasValue)
+            {
+                await EnsureBranchExistsAsync(branchId.Value);
+            }
 
             var items = await _unitOfWork.PurchaseRequests.GetByDateRangeAsync(branchId, from, to);
             return items.Select(MapToDto);
