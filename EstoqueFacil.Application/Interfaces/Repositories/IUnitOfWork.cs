@@ -11,6 +11,7 @@ namespace EstoqueFacil.Application.Interfaces.Repositories
         IBranchRepository Branches { get; }
         IProductStockRepository ProductStocks { get; }
         IPurchaseRequestRepository PurchaseRequests { get; }
+        ISectorRepository Sectors { get; }
         IGenericRepository<Plan> Plans { get; }
         IGenericRepository<Company> Companies { get; }
 

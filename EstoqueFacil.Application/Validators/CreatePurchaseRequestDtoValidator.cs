@@ -17,6 +17,13 @@ namespace EstoqueFacil.Application.Validators
             RuleFor(pr => pr.RequestDate)
                 .NotEmpty().WithMessage("Informe a data da solicitação de compra.");
 
+            RuleFor(pr => pr.ExpectedDeliveryDate)
+                .GreaterThanOrEqualTo(pr => pr.RequestDate).When(pr => pr.ExpectedDeliveryDate.HasValue)
+                .WithMessage("A previsão de entrega não pode ser antes da data da SC.");
+
+            RuleFor(pr => pr.PaymentTerms)
+                .MaximumLength(200).WithMessage("A condição de pagamento deve ter no máximo 200 caracteres.");
+
             RuleFor(pr => pr.RequesterName)
                 .MaximumLength(150).WithMessage("O nome do solicitante deve ter no máximo 150 caracteres.");
 
@@ -35,6 +42,9 @@ namespace EstoqueFacil.Application.Validators
 
                 item.RuleFor(i => i.Quantity)
                     .GreaterThan(0).WithMessage("A quantidade de cada item deve ser maior que zero.");
+
+                item.RuleFor(i => i.UnitPrice)
+                    .GreaterThanOrEqualTo(0).When(i => i.UnitPrice.HasValue).WithMessage("O preço unitário não pode ser negativo.");
             });
         }
     }

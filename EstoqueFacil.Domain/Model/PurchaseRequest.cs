@@ -11,6 +11,16 @@ namespace EstoqueFacil.Domain.Model
 
         public string Number { get; set; } = string.Empty;
         public DateOnly RequestDate { get; set; }
+        public DateOnly? ExpectedDeliveryDate { get; set; }
+
+        public int? SupplierId { get; set; }
+        public Supplier? Supplier { get; set; }
+
+        public int? SectorId { get; set; }
+        public Sector? Sector { get; set; }
+
+        // Ex.: "30/60 dias", "À vista no PIX".
+        public string? PaymentTerms { get; set; }
 
         // Derivado dos itens: Open enquanto houver item pendente; Received se algum foi recebido; Canceled se todos cancelados.
         public PurchaseRequestStatus Status { get; set; }

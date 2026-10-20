@@ -47,6 +47,13 @@ namespace EstoqueFacil.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = purchaseRequest.Id }, purchaseRequest);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] CreatePurchaseRequestDto dto)
+        {
+            var purchaseRequest = await _purchaseRequestService.UpdateAsync(id, dto);
+            return Ok(purchaseRequest);
+        }
+
         [HttpPost("{id}/receive")]
         public async Task<IActionResult> Receive(int id, [FromBody] ReceivePurchaseRequestDto dto)
         {

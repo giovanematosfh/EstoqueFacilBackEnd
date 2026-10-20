@@ -275,6 +275,9 @@ namespace EstoqueFacil.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("ExpectedDeliveryDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -284,6 +287,10 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("PaymentTerms")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<DateOnly>("RequestDate")
                         .HasColumnType("date");
 
@@ -291,10 +298,20 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<int?>("SectorId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SupplierId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("SectorId");
+
+                    b.HasIndex("SupplierId");
 
                     b.HasIndex("BranchId", "RequestDate");
 
@@ -333,6 +350,9 @@ namespace EstoqueFacil.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("UnitPrice")
+                        .HasColumnType("numeric(18,2)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
@@ -343,6 +363,40 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("purchase_request_items", (string)null);
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.Sector", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ResponsibleName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("sectors", (string)null);
                 });
 
             modelBuilder.Entity("EstoqueFacil.Domain.Model.StockMovement", b =>
@@ -729,7 +783,21 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("EstoqueFacil.Domain.Model.Sector", "Sector")
+                        .WithMany()
+                        .HasForeignKey("SectorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EstoqueFacil.Domain.Model.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Branch");
+
+                    b.Navigation("Sector");
+
+                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("EstoqueFacil.Domain.Model.PurchaseRequestItem", b =>
@@ -755,6 +823,15 @@ namespace EstoqueFacil.Infrastructure.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("PurchaseRequest");
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.Sector", b =>
+                {
+                    b.HasOne("EstoqueFacil.Domain.Model.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EstoqueFacil.Domain.Model.StockMovement", b =>

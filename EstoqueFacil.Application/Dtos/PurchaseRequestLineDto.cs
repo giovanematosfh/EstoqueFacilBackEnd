@@ -12,6 +12,10 @@ namespace EstoqueFacil.Application.Dtos
         public string BranchName { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;
         public int Quantity { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public decimal? Total { get; set; }
+        public string? SupplierName { get; set; }
+        public string? SectorName { get; set; }
         public DateOnly RequestDate { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateOnly? ReceivedDate { get; set; }

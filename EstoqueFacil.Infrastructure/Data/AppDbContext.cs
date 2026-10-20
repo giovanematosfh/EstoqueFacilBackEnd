@@ -109,6 +109,7 @@ namespace EstoqueFacil.Infrastructure.Data
             ConfigureTenant<ProductStock>(modelBuilder);
             ConfigureTenant<PurchaseRequest>(modelBuilder);
             ConfigureTenant<PurchaseRequestItem>(modelBuilder);
+            ConfigureTenant<Sector>(modelBuilder);
 
             modelBuilder.Entity<Category>(entity =>
             {
@@ -212,6 +213,7 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.Property(pr => pr.RequestDate).IsRequired();
                 entity.Property(pr => pr.Status).IsRequired();
                 entity.Property(pr => pr.RequesterName).HasMaxLength(150);
+                entity.Property(pr => pr.PaymentTerms).HasMaxLength(200);
                 entity.Property(pr => pr.Notes).HasMaxLength(500);
                 entity.Property(pr => pr.CreatedAt).IsRequired();
 
@@ -224,6 +226,29 @@ namespace EstoqueFacil.Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(pr => pr.BranchId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                // Excluir o fornecedor não apaga a SC; ela só fica sem fornecedor.
+                entity.HasOne(pr => pr.Supplier)
+                    .WithMany()
+                    .HasForeignKey(pr => pr.SupplierId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(pr => pr.Sector)
+                    .WithMany()
+                    .HasForeignKey(pr => pr.SectorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Sector>(entity =>
+            {
+                entity.ToTable("sectors");
+                entity.HasKey(s => s.Id);
+                entity.Property(s => s.Name).IsRequired().HasMaxLength(100);
+                entity.Property(s => s.ResponsibleName).HasMaxLength(150);
+                entity.Property(s => s.Active).IsRequired();
+                entity.Property(s => s.CreatedAt).IsRequired();
+
+                entity.HasIndex(s => new { s.CompanyId, s.Name }).IsUnique();
             });
 
             modelBuilder.Entity<PurchaseRequestItem>(entity =>
@@ -231,6 +256,7 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.ToTable("purchase_request_items");
                 entity.HasKey(i => i.Id);
                 entity.Property(i => i.Quantity).IsRequired();
+                entity.Property(i => i.UnitPrice).HasColumnType("numeric(18,2)");
                 entity.Property(i => i.Status).IsRequired();
 
                 entity.HasIndex(i => new { i.PurchaseRequestId, i.ProductId }).IsUnique();

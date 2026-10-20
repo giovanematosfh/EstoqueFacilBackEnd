@@ -13,6 +13,9 @@ namespace EstoqueFacil.Domain.Model
         public Product Product { get; set; } = null!;
 
         public int Quantity { get; set; }
+
+        // Preço combinado por unidade; opcional porque a SC pode ser feita antes da cotação.
+        public decimal? UnitPrice { get; set; }
         public PurchaseRequestStatus Status { get; set; }
         public DateOnly? ReceivedDate { get; set; }
         public int? ReceivedQuantity { get; set; }

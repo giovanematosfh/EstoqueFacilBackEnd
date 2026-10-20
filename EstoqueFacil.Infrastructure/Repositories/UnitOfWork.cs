@@ -15,6 +15,7 @@ namespace EstoqueFacil.Infrastructure.Repositories
         private IBranchRepository? _branches;
         private IProductStockRepository? _productStocks;
         private IPurchaseRequestRepository? _purchaseRequests;
+        private ISectorRepository? _sectors;
         private IGenericRepository<Plan>? _plans;
         private IGenericRepository<Company>? _companies;
 
@@ -36,6 +37,8 @@ namespace EstoqueFacil.Infrastructure.Repositories
         public IProductStockRepository ProductStocks => _productStocks ??= new ProductStockRepository(_context);
 
         public IPurchaseRequestRepository PurchaseRequests => _purchaseRequests ??= new PurchaseRequestRepository(_context);
+
+        public ISectorRepository Sectors => _sectors ??= new SectorRepository(_context);
 
         public IGenericRepository<Plan> Plans => _plans ??= new GenericRepository<Plan>(_context);
 

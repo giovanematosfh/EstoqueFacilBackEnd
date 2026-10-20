@@ -9,6 +9,7 @@ namespace EstoqueFacil.Application.Interfaces.Services
         Task<IEnumerable<PurchaseRequestLineDto>> GetLinesByDateRangeAsync(int? branchId, DateOnly from, DateOnly to);
         Task<PurchaseRequestDto> GetByIdAsync(int id);
         Task<PurchaseRequestDto> CreateAsync(CreatePurchaseRequestDto dto);
+        Task<PurchaseRequestDto> UpdateAsync(int id, CreatePurchaseRequestDto dto);
         Task<PurchaseRequestDto> ReceiveAsync(int id, ReceivePurchaseRequestDto dto);
         Task<PurchaseRequestDto> CancelAsync(int id);
     }
