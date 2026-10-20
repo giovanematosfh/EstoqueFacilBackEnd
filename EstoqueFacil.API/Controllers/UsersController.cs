@@ -156,6 +156,22 @@ namespace EstoqueFacil.API.Controllers
             return Ok(await MapToDtoAsync(user));
         }
 
+        // O admin define a nova senha sem precisar saber a atual (ex.: usuário esqueceu).
+        [HttpPut("{id}/password")]
+        public async Task<IActionResult> ResetPassword(int id, [FromBody] ResetUserPasswordDto dto)
+        {
+            var user = await FindCompanyUserAsync(id);
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+            if (!result.Succeeded)
+            {
+                throw new BusinessException(string.Join(" ", result.Errors.Select(e => e.Description)));
+            }
+
+            return NoContent();
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Remove(int id)
         {
