@@ -65,7 +65,8 @@ namespace EstoqueFacil.Infrastructure.Repositories
         public async Task<IEnumerable<ProductStock>> GetLowStockAsync(int? branchId)
         {
             return await QueryByBranch(branchId)
-                .Where(ps => ps.Quantity <= ps.MinimumQuantity)
+                // Igual ao estoque de segurança ainda está ok; só alerta compra quando fica abaixo.
+                .Where(ps => ps.Quantity < ps.MinimumQuantity)
                 .ToListAsync();
         }
 

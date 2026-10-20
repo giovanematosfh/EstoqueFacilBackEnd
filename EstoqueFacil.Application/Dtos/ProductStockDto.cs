@@ -10,6 +10,7 @@ namespace EstoqueFacil.Application.Dtos
         public int Quantity { get; set; }
         public int MinimumQuantity { get; set; }
         public string? PurchaseRequestNumber { get; set; }
-        public bool LowStock => Quantity <= MinimumQuantity;
+        // Igual ao estoque de segurança ainda está ok; só alerta compra quando fica abaixo.
+        public bool LowStock => Quantity < MinimumQuantity;
     }
 }
