@@ -284,18 +284,6 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer");
-
-                    b.Property<DateOnly?>("ReceivedDate")
-                        .HasColumnType("date");
-
-                    b.Property<int?>("ReceivedQuantity")
-                        .HasColumnType("integer");
-
                     b.Property<DateOnly>("RequestDate")
                         .HasColumnType("date");
 
@@ -308,13 +296,53 @@ namespace EstoqueFacil.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BranchId", "RequestDate");
+
+                    b.HasIndex("CompanyId", "BranchId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("purchase_requests", (string)null);
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.PurchaseRequestItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PurchaseRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("ReceivedDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("ReceivedQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("CompanyId");
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("BranchId", "RequestDate");
+                    b.HasIndex("PurchaseRequestId", "ProductId")
+                        .IsUnique();
 
-                    b.ToTable("purchase_requests", (string)null);
+                    b.ToTable("purchase_request_items", (string)null);
                 });
 
             modelBuilder.Entity("EstoqueFacil.Domain.Model.StockMovement", b =>
@@ -701,15 +729,32 @@ namespace EstoqueFacil.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Branch");
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.PurchaseRequestItem", b =>
+                {
+                    b.HasOne("EstoqueFacil.Domain.Model.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("EstoqueFacil.Domain.Model.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Branch");
+                    b.HasOne("EstoqueFacil.Domain.Model.PurchaseRequest", "PurchaseRequest")
+                        .WithMany("Items")
+                        .HasForeignKey("PurchaseRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Product");
+
+                    b.Navigation("PurchaseRequest");
                 });
 
             modelBuilder.Entity("EstoqueFacil.Domain.Model.StockMovement", b =>
@@ -830,6 +875,11 @@ namespace EstoqueFacil.Infrastructure.Migrations
                     b.Navigation("ProductStocks");
 
                     b.Navigation("StockMovements");
+                });
+
+            modelBuilder.Entity("EstoqueFacil.Domain.Model.PurchaseRequest", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

@@ -33,15 +33,15 @@ namespace EstoqueFacil.Application.Services
             };
         }
 
-        public async Task<IEnumerable<PurchaseRequestDto>> GetByDateRangeAsync(int? branchId, DateOnly from, DateOnly to)
+        public async Task<IEnumerable<PurchaseRequestLineDto>> GetLinesByDateRangeAsync(int? branchId, DateOnly from, DateOnly to)
         {
             if (branchId.HasValue)
             {
                 await EnsureBranchExistsAsync(branchId.Value);
             }
 
-            var items = await _unitOfWork.PurchaseRequests.GetByDateRangeAsync(branchId, from, to);
-            return items.Select(MapToDto);
+            var items = await _unitOfWork.PurchaseRequests.GetItemsByDateRangeAsync(branchId, from, to);
+            return items.Select(MapToLineDto);
         }
 
         public async Task<PurchaseRequestDto> GetByIdAsync(int id)
@@ -52,12 +52,6 @@ namespace EstoqueFacil.Application.Services
 
         public async Task<PurchaseRequestDto> CreateAsync(CreatePurchaseRequestDto dto)
         {
-            var product = await _unitOfWork.Products.GetByIdAsync(dto.ProductId);
-            if (product == null)
-            {
-                throw new NotFoundException($"Produto com id {dto.ProductId} não foi encontrado.");
-            }
-
             var branch = await _unitOfWork.Branches.GetByIdAsync(dto.BranchId);
             if (branch == null)
             {
@@ -65,17 +59,15 @@ namespace EstoqueFacil.Application.Services
             }
 
             var number = dto.Number.Trim();
-
-            // A SC em aberto mais recente fica visível direto no nível de estoque.
-            var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(dto.ProductId, dto.BranchId);
-            productStock.PurchaseRequestNumber = number;
+            if (await _unitOfWork.PurchaseRequests.ExistsWithNumberAsync(dto.BranchId, number))
+            {
+                throw new BusinessException($"Já existe uma SC nº {number} nesta filial.");
+            }
 
             var purchaseRequest = new PurchaseRequest
             {
-                ProductId = dto.ProductId,
                 BranchId = dto.BranchId,
                 Number = number,
-                Quantity = dto.Quantity,
                 RequestDate = dto.RequestDate,
                 Status = PurchaseRequestStatus.Open,
                 RequesterName = dto.RequesterName,
@@ -83,10 +75,30 @@ namespace EstoqueFacil.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
 
+            foreach (var itemDto in dto.Items)
+            {
+                var product = await _unitOfWork.Products.GetByIdAsync(itemDto.ProductId);
+                if (product == null)
+                {
+                    throw new NotFoundException($"Produto com id {itemDto.ProductId} não foi encontrado.");
+                }
+
+                // A SC em aberto mais recente fica visível direto no nível de estoque.
+                var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(itemDto.ProductId, dto.BranchId);
+                productStock.PurchaseRequestNumber = number;
+
+                purchaseRequest.Items.Add(new PurchaseRequestItem
+                {
+                    ProductId = itemDto.ProductId,
+                    Product = product,
+                    Quantity = itemDto.Quantity,
+                    Status = PurchaseRequestStatus.Open
+                });
+            }
+
             _unitOfWork.PurchaseRequests.Add(purchaseRequest);
             await _unitOfWork.CommitAsync();
 
-            purchaseRequest.Product = product;
             purchaseRequest.Branch = branch;
             return MapToDto(purchaseRequest);
         }
@@ -96,40 +108,59 @@ namespace EstoqueFacil.Application.Services
             var purchaseRequest = await GetExistingAsync(id);
             EnsureOpen(purchaseRequest);
 
-            // O recebimento dá entrada no estoque, na mesma transação.
-            var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(purchaseRequest.ProductId, purchaseRequest.BranchId);
-            productStock.Quantity += dto.Quantity;
-            ClearOpenNumber(productStock, purchaseRequest);
-
-            _unitOfWork.StockMovements.Add(new StockMovement
+            foreach (var received in dto.Items.Where(i => i.Quantity > 0))
             {
-                ProductId = purchaseRequest.ProductId,
-                BranchId = purchaseRequest.BranchId,
-                Type = MovementType.Inbound,
-                Quantity = dto.Quantity,
-                Reason = $"Recebimento SC nº {purchaseRequest.Number}",
-                MovementDate = DateTime.UtcNow,
-                RequesterName = purchaseRequest.RequesterName
-            });
+                var item = purchaseRequest.Items.FirstOrDefault(i => i.Id == received.ItemId);
+                if (item == null)
+                {
+                    throw new NotFoundException($"O item {received.ItemId} não pertence à SC nº {purchaseRequest.Number}.");
+                }
 
-            purchaseRequest.Status = PurchaseRequestStatus.Received;
-            purchaseRequest.ReceivedDate = dto.ReceivedDate;
-            purchaseRequest.ReceivedQuantity = dto.Quantity;
+                if (item.Status != PurchaseRequestStatus.Open)
+                {
+                    throw new BusinessException($"O item {item.Product.Name} da SC nº {purchaseRequest.Number} já foi recebido ou cancelado.");
+                }
 
+                // O recebimento dá entrada no estoque, na mesma transação.
+                var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(item.ProductId, purchaseRequest.BranchId);
+                productStock.Quantity += received.Quantity;
+
+                _unitOfWork.StockMovements.Add(new StockMovement
+                {
+                    ProductId = item.ProductId,
+                    BranchId = purchaseRequest.BranchId,
+                    Type = MovementType.Inbound,
+                    Quantity = received.Quantity,
+                    Reason = $"Recebimento SC nº {purchaseRequest.Number}",
+                    MovementDate = DateTime.UtcNow,
+                    RequesterName = purchaseRequest.RequesterName
+                });
+
+                item.Status = PurchaseRequestStatus.Received;
+                item.ReceivedDate = dto.ReceivedDate;
+                item.ReceivedQuantity = received.Quantity;
+                ClearOpenNumber(productStock, purchaseRequest);
+            }
+
+            purchaseRequest.RefreshStatus();
             await _unitOfWork.CommitAsync();
             return MapToDto(purchaseRequest);
         }
 
+        // Cancela os itens ainda pendentes; os já recebidos continuam registrados.
         public async Task<PurchaseRequestDto> CancelAsync(int id)
         {
             var purchaseRequest = await GetExistingAsync(id);
             EnsureOpen(purchaseRequest);
 
-            var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(purchaseRequest.ProductId, purchaseRequest.BranchId);
-            ClearOpenNumber(productStock, purchaseRequest);
+            foreach (var item in purchaseRequest.Items.Where(i => i.Status == PurchaseRequestStatus.Open))
+            {
+                var productStock = await _unitOfWork.ProductStocks.GetOrCreateAsync(item.ProductId, purchaseRequest.BranchId);
+                ClearOpenNumber(productStock, purchaseRequest);
+                item.Status = PurchaseRequestStatus.Canceled;
+            }
 
-            purchaseRequest.Status = PurchaseRequestStatus.Canceled;
-
+            purchaseRequest.RefreshStatus();
             await _unitOfWork.CommitAsync();
             return MapToDto(purchaseRequest);
         }
@@ -175,17 +206,49 @@ namespace EstoqueFacil.Application.Services
             return new PurchaseRequestDto
             {
                 Id = purchaseRequest.Id,
-                ProductId = purchaseRequest.ProductId,
-                ProductName = purchaseRequest.Product?.Name ?? string.Empty,
-                Sku = purchaseRequest.Product?.Sku ?? string.Empty,
                 BranchId = purchaseRequest.BranchId,
                 BranchName = purchaseRequest.Branch?.Name ?? string.Empty,
                 Number = purchaseRequest.Number,
-                Quantity = purchaseRequest.Quantity,
                 RequestDate = purchaseRequest.RequestDate,
                 Status = purchaseRequest.Status.ToString(),
-                ReceivedDate = purchaseRequest.ReceivedDate,
-                ReceivedQuantity = purchaseRequest.ReceivedQuantity,
+                RequesterName = purchaseRequest.RequesterName,
+                Notes = purchaseRequest.Notes,
+                CreatedAt = purchaseRequest.CreatedAt,
+                Items = purchaseRequest.Items
+                    .OrderBy(i => i.Product?.Name)
+                    .Select(i => new PurchaseRequestItemDto
+                    {
+                        Id = i.Id,
+                        ProductId = i.ProductId,
+                        ProductName = i.Product?.Name ?? string.Empty,
+                        Sku = i.Product?.Sku ?? string.Empty,
+                        Quantity = i.Quantity,
+                        Status = i.Status.ToString(),
+                        ReceivedDate = i.ReceivedDate,
+                        ReceivedQuantity = i.ReceivedQuantity
+                    })
+                    .ToList()
+            };
+        }
+
+        private static PurchaseRequestLineDto MapToLineDto(PurchaseRequestItem item)
+        {
+            var purchaseRequest = item.PurchaseRequest;
+            return new PurchaseRequestLineDto
+            {
+                Id = item.Id,
+                PurchaseRequestId = purchaseRequest.Id,
+                ProductId = item.ProductId,
+                ProductName = item.Product?.Name ?? string.Empty,
+                Sku = item.Product?.Sku ?? string.Empty,
+                BranchId = purchaseRequest.BranchId,
+                BranchName = purchaseRequest.Branch?.Name ?? string.Empty,
+                Number = purchaseRequest.Number,
+                Quantity = item.Quantity,
+                RequestDate = purchaseRequest.RequestDate,
+                Status = item.Status.ToString(),
+                ReceivedDate = item.ReceivedDate,
+                ReceivedQuantity = item.ReceivedQuantity,
                 RequesterName = purchaseRequest.RequesterName,
                 Notes = purchaseRequest.Notes,
                 CreatedAt = purchaseRequest.CreatedAt

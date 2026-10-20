@@ -108,6 +108,7 @@ namespace EstoqueFacil.Infrastructure.Data
             ConfigureTenant<Branch>(modelBuilder);
             ConfigureTenant<ProductStock>(modelBuilder);
             ConfigureTenant<PurchaseRequest>(modelBuilder);
+            ConfigureTenant<PurchaseRequestItem>(modelBuilder);
 
             modelBuilder.Entity<Category>(entity =>
             {
@@ -208,7 +209,6 @@ namespace EstoqueFacil.Infrastructure.Data
                 entity.ToTable("purchase_requests");
                 entity.HasKey(pr => pr.Id);
                 entity.Property(pr => pr.Number).IsRequired().HasMaxLength(50);
-                entity.Property(pr => pr.Quantity).IsRequired();
                 entity.Property(pr => pr.RequestDate).IsRequired();
                 entity.Property(pr => pr.Status).IsRequired();
                 entity.Property(pr => pr.RequesterName).HasMaxLength(150);
@@ -217,15 +217,33 @@ namespace EstoqueFacil.Infrastructure.Data
 
                 entity.HasIndex(pr => new { pr.BranchId, pr.RequestDate });
 
-                entity.HasOne(pr => pr.Product)
-                    .WithMany()
-                    .HasForeignKey(pr => pr.ProductId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                // O nº da SC é único por filial.
+                entity.HasIndex(pr => new { pr.CompanyId, pr.BranchId, pr.Number }).IsUnique();
 
                 entity.HasOne(pr => pr.Branch)
                     .WithMany()
                     .HasForeignKey(pr => pr.BranchId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PurchaseRequestItem>(entity =>
+            {
+                entity.ToTable("purchase_request_items");
+                entity.HasKey(i => i.Id);
+                entity.Property(i => i.Quantity).IsRequired();
+                entity.Property(i => i.Status).IsRequired();
+
+                entity.HasIndex(i => new { i.PurchaseRequestId, i.ProductId }).IsUnique();
+
+                entity.HasOne(i => i.PurchaseRequest)
+                    .WithMany(pr => pr.Items)
+                    .HasForeignKey(i => i.PurchaseRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(i => i.Product)
+                    .WithMany()
+                    .HasForeignKey(i => i.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
 
